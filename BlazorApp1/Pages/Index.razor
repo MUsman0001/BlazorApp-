@@ -1,0 +1,139 @@
+﻿@page "/"
+@inject HttpClient httpClient
+
+<style>
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .loading {
+        margin-top: 50px;
+    }
+
+    .error {
+        color: red;
+    }
+
+    .joke-text {
+        font-size: 18px;
+        line-height: 1.5;
+    }
+
+    .btn {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+    .fetch-more {
+        margin-top: 20px;
+    }
+
+        .fetch-more input {
+            width: 60px;
+            margin: 0 10px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+</style>
+
+<div class="container">
+    <h3>Chuck Norris Jokes</h3>
+
+    @if (isLoading)
+    {
+        <p class="loading">Loading...</p>
+    }
+    else if (errorMessage != null)
+    {
+        <p class="error">An error occurred: @errorMessage</p>
+    }
+    else
+    {
+        <div>
+            <p class="joke-text">@((MarkupString)jokeText)</p>
+            <button class="btn" @onclick="FetchJoke">Get Another Joke</button>
+            <div class="fetch-more">
+                <label for="numJokesInput">Fetch More Jokes:</label>
+                <input id="numJokesInput" type="number" min="1" @bind="numJokesToFetch" />
+                <button class="btn" @onclick="FetchMoreJokes">Fetch More</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = false;
+    private string errorMessage = null;
+    private string jokeText = "";
+    private int numJokesToFetch = 1;
+    private int jokeCount = 0;
+
+    private async Task FetchJoke()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await httpClient.GetAsync("https://api.chucknorris.io/jokes/random");
+            response.EnsureSuccessStatusCode();
+            var jokeData = await response.Content.ReadFromJsonAsync<JokeResponse>();
+            jokeText += $"<br/>{++jokeCount}. {jokeData.Value}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task FetchMoreJokes()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            if (numJokesToFetch > 0)
+            {
+                for (int i = 0; i < numJokesToFetch; i++)
+                {
+                    var response = await httpClient.GetAsync("https://api.chucknorris.io/jokes/random");
+                    response.EnsureSuccessStatusCode();
+                    var jokeData = await response.Content.ReadFromJsonAsync<JokeResponse>();
+                    jokeText += $"<br/>{++jokeCount}. {jokeData.Value}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class JokeResponse
+    {
+        public string Value { get; set; }
+    }
+}
